@@ -163,7 +163,7 @@ const AddMineralForm = () => {
           <MultiSelect
             placeholder="Select Counties"
             options={location?.filter(
-              (item) =>
+              (item:any) =>
                 item?.type === "county" &&
                 item?.state?.name === formInputs.state.label
             )}
@@ -177,7 +177,7 @@ const AddMineralForm = () => {
                 value: e.target.value,
               })
             }
-            className="w-full !rounded-lg"
+            className="w-full rounded-lg!"
           />
         </div>
       </div>

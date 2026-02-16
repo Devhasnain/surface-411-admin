@@ -1,12 +1,14 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { Label } from "../../components/index";
-import { useQuery } from "../../hooks/useQuery";
-import { endpoints } from "../../config/api";
-import { useDispatch, useSelector } from "react-redux";
-import { getToken } from "../../store/slices/authSlice";
-import { getLocations, setLocations } from "../../store/slices/locationsSlice";
-import AsyncSelect from "react-select/async";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import { useDispatch, useSelector } from "react-redux";
+import AsyncSelect from "react-select/async";
+
+import { getLocations, setLocations } from "../../store/slices/locationsSlice";
+import { getToken } from "../../store/slices/authSlice";
+import { useQuery } from "../../hooks/useQuery";
+import { Label } from "../../components/index";
+import { endpoints } from "../../config/api";
+
 
 type Props = {
   required?: boolean;
@@ -91,7 +93,7 @@ const SelectLocation = ({
       <div className="flex flex-row items-center gap-3">
         <AsyncSelect
           placeholder={placeholder}
-          className="!h-11 w-full"
+          className="h-11! w-full z-10"
           isMulti={false}
           value={select}
           onChange={(e) => setSelect(e)}

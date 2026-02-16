@@ -1,2 +1,3 @@
 public/** merge=ours
 src/components/brand/Logo.tsx merge=ours
+src/layout/Routes.tsx merge=ours
