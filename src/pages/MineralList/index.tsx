@@ -1,18 +1,17 @@
 import { ArrowPathIcon, EyeIcon, MagnifyingGlassIcon, PencilSquareIcon, } from "@heroicons/react/24/outline";
-import { ChangeEvent, memo, useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigation } from "react-router";
+import { ChangeEvent, memo, useCallback, useEffect, useMemo, useState, } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { MultiSelect } from "primereact/multiselect";
+import { Link, useLocation } from "react-router";
 import { DataTable } from "primereact/datatable";
 import { Dropdown } from "primereact/dropdown";
 import { Column } from "primereact/column";
 import toast from "react-hot-toast";
 
-import { Button, IconButton, Label, Modal, PageMeta } from "../../components";
+import { Button, IconButton, Label, Modal, PageMeta, InputField as Input, } from "../../components";
 import { removeMineral } from "../../store/slices/mineralsSlice";
 import { getLocations } from "../../store/slices/locationsSlice";
 import { useDeleteRequest } from "../../hooks/useDeleteRequest";
-import Input from "../../components/form/input/InputField";
 import { getToken } from "../../store/slices/authSlice";
 import baseApi, { endpoints } from "../../config/api";
 import { useModal } from "../../hooks/useModal";
@@ -31,7 +30,10 @@ export default function MineralList() {
   const [showSearch, setShowSearch] = useState(false);
   const pathname = useLocation()?.pathname;
   const pageTitle = useMemo(() => {
-    if(pathname?.includes("/mineral")) return navItems.find((item) => item.id === "mineral")?.name || "Mineral Owners";
+    if (pathname?.includes("/mineral"))
+      return (
+        navItems.find((item) => item.id === "mineral")?.name || "Mineral Owners"
+      );
     return "";
   }, [pathname]);
 
@@ -80,7 +82,7 @@ export default function MineralList() {
           className="text-xl font-semibold text-gray-800 dark:text-white/90"
           x-text="pageName"
         >
-         {pageTitle}
+          {pageTitle}
         </h2>
         <ol className="flex items-center gap-2">
           <li>
@@ -143,7 +145,7 @@ export default function MineralList() {
             }
             body={(rowData) => (
               <span className="text-gray-500 text-sm font-normal line-clamp-2">
-                {rowData?.names[0] ?? "-"}
+                {getValue(rowData?.names[0])}
               </span>
             )}
             style={{ minWidth: "12rem" }}
@@ -158,7 +160,7 @@ export default function MineralList() {
             body={(rowData) => (
               <>
                 <span className="text-gray-500 text-sm font-normal">
-                  {rowData?.emails[0] ?? "-"}
+                  {getValue(rowData?.emails[0])}
                 </span>
               </>
             )}
@@ -172,7 +174,7 @@ export default function MineralList() {
             }
             body={(rowData) => (
               <span className="text-gray-500 text-sm font-normal">
-                {rowData?.numbers[0] ?? "-"}
+                {getValue(rowData?.numbers[0])}
               </span>
             )}
             style={{ minWidth: "14rem" }}
@@ -203,9 +205,8 @@ export default function MineralList() {
               <Dropdown
                 value={rowData?.counties?.length ? rowData?.counties[0] : ""}
                 options={rowData?.counties}
-                className="w-[10rem] !text-sm"
+                className="w-40 text-sm!"
                 pt={{
-                  // root: { className: "h-8 text-sm" },
                   input: { className: "text-sm py-1" },
                 }}
               />
@@ -219,7 +220,7 @@ export default function MineralList() {
             field="addresses"
             filter={false}
             header={
-              <span className="text-gray-500 text-sm font-normal !line-clamp-2">
+              <span className="text-gray-500 text-sm font-normal line-clamp-2!">
                 Address
               </span>
             }
@@ -354,7 +355,7 @@ const SearchForm = memo(
         stateCode: "",
         counties: "",
       });
-    }
+    };
 
     return (
       <form onSubmit={onSubmit} className="mb-8 flex flex-col gap-2">
@@ -403,7 +404,13 @@ const SearchForm = memo(
         </div>
 
         <div className="flex flex-row items-center gap-2 mt-3">
-          <Button disabled={loading} onClick={onClearSearch} type="button" variant="outline" size="sm">
+          <Button
+            disabled={loading}
+            onClick={onClearSearch}
+            type="button"
+            variant="outline"
+            size="sm"
+          >
             Clear
           </Button>
           <Button disabled={loading} type="submit" size="sm">
@@ -414,3 +421,8 @@ const SearchForm = memo(
     );
   }
 );
+
+const getValue = (value: ""): string | any => {
+  if (value === null || value === undefined || value === "") return "-";
+  return value;
+};

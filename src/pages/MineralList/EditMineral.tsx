@@ -25,8 +25,10 @@ let initialInputValues = {
   email: "",
   zipcode: "",
   number: "",
+  city: "",
   address: "",
   state: { label: "", value: "" },
+  ownerState: { label: "", value: "" },
   description: "",
 };
 
@@ -81,6 +83,11 @@ const EditMineral = () => {
         name: formInputs.name,
         zipcode: formInputs.zipcode,
         description: formInputs.description,
+        city: formInputs.city,
+        ownerState: {
+          name: formInputs.ownerState.label,
+          code: formInputs.ownerState.value,
+        },
         state: {
           name: formInputs.state?.label,
           code: formInputs?.state?.value,
@@ -109,7 +116,12 @@ const EditMineral = () => {
         ...initialInputValues,
         zipcode: data?.zipcode,
         state: { label: data?.state?.name, value: data?.state?.code },
+        ownerState: {
+          label: formInputs.ownerState.label,
+          value: formInputs.ownerState.value,
+        },
         description: data?.description,
+        city: data?.city,
       });
       setFormArray({
         names: data?.names,
@@ -182,61 +194,89 @@ const EditMineral = () => {
               resetInput={handleResetInput}
               removeItem={handleArrayRemoveItem}
             />
-            <TodoInput
-              label="Address"
-              placeholder="Address"
-              fieldName="addresses"
-              name="address"
-              type="text"
-              value={formInputs.address}
-              items={formArray.addresses}
-              onChange={handleOnChange}
-              addItem={handleOnChangeArray}
-              resetInput={handleResetInput}
-              removeItem={handleArrayRemoveItem}
-            />
           </div>
-          <div className="grid grid-cols-2 gap-5">
-            <SelectLocation
-              name="state"
-              label="State"
-              placeholder="Select state"
-              value={formInputs.state}
-              onChange={handleOnChange}
-            />
-            <div className="">
-              <Label htmlFor="counties">Counties</Label>
-              <MultiSelect
-                placeholder="Select Counties"
-                options={location?.filter(
-                  (item) =>
-                    item?.type === "county" &&
-                    item?.state?.name === formInputs.state.label
-                )}
-                optionLabel="name"
-                optionValue="name"
-                filter={true}
-                value={formArray.counties}
-                onChange={(e) =>
-                  handleOnChangeArray({
-                    fieldName: "counties",
-                    value: e.target.value,
-                  })
-                }
-                className="w-full !rounded-lg"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-5">
-            <div className="">
-              <Label htmlFor="zipcode">Zipcode</Label>
-              <Input
-                placeholder="Zipcode"
-                type="number"
-                name="zipcode"
-                value={formInputs.zipcode}
+          <div>
+            <span className="font-medium text-lg">Mineral Location</span>
+            <div className="grid grid-cols-2 gap-5">
+              <SelectLocation
+                name="state"
+                label="State"
+                placeholder="Select state"
+                value={formInputs.state}
                 onChange={handleOnChange}
               />
+              <div className="">
+                <Label htmlFor="counties">Counties</Label>
+                <MultiSelect
+                  placeholder="Select Counties"
+                  options={location?.filter(
+                    (item) =>
+                      item?.type === "county" &&
+                      item?.state?.name === formInputs.state.label
+                  )}
+                  optionLabel="name"
+                  optionValue="name"
+                  filter={true}
+                  value={formArray.counties}
+                  onChange={(e) =>
+                    handleOnChangeArray({
+                      fieldName: "counties",
+                      value: e.target.value,
+                    })
+                  }
+                  className="w-full !rounded-lg"
+                />
+              </div>
+            </div>
+          </div>
+          <div>
+            <span className="font-medium text-lg">Mineral Owner Location</span>
+            <div className="grid grid-cols-2 gap-5">
+              
+              <div className="">
+                <Label htmlFor="city">City</Label>
+                <Input
+                  placeholder="City"
+                  type="text"
+                  name="city"
+                  value={formInputs.city}
+                  onChange={handleOnChange}
+                />
+              </div>
+              <div className="">
+                <Label htmlFor="zipcode">Zipcode</Label>
+                <Input
+                  placeholder="Zipcode"
+                  type="number"
+                  name="zipcode"
+                  value={formInputs.zipcode}
+                  onChange={handleOnChange}
+                />
+              </div>
+              <div>
+                <SelectLocation
+                name="ownerState"
+                label="Owner state"
+                placeholder="Owner state"
+                value={formInputs.ownerState}
+                onChange={handleOnChange}
+              />
+              </div>
+              <div>
+                <TodoInput
+                  label="Address"
+                  placeholder="Address"
+                  fieldName="addresses"
+                  name="address"
+                  type="text"
+                  value={formInputs.address}
+                  items={formArray.addresses}
+                  onChange={handleOnChange}
+                  addItem={handleOnChangeArray}
+                  resetInput={handleResetInput}
+                  removeItem={handleArrayRemoveItem}
+                />
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-1">
