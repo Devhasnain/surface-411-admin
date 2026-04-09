@@ -117,8 +117,8 @@ const EditMineral = () => {
         zipcode: data?.zipcode,
         state: { label: data?.state?.name, value: data?.state?.code },
         ownerState: {
-          label: formInputs.ownerState.label,
-          value: formInputs.ownerState.value,
+          label: data?.ownerState?.name || "",
+          value: data?.ownerState?.code || "",
         },
         description: data?.description,
         city: data?.city,
@@ -131,7 +131,17 @@ const EditMineral = () => {
         addresses: data?.addresses ?? [],
       });
     }
-  }, [getMineralDetails?.data?.mineral, id]);
+  }, [getMineralDetails?.data?.mineral]);
+
+
+  console.log(location?.filter(
+                    (item) =>
+                      item?.type === "county" &&
+                      item?.state?.code === formInputs.state.value
+                  ))
+
+                  console.log(formArray.counties)
+
 
   return (
     <>
@@ -147,7 +157,7 @@ const EditMineral = () => {
           onSubmit={handleOnSubmit}
         >
           {getMineralDetails.loading && (
-            <div className="absolute top-0 left-0 w-full h-full backdrop-blur-[4px] z-1 flex flex-col items-center justify-center">
+            <div className="absolute top-0 left-0 w-full h-full backdrop-blur-xs z-1 flex flex-col items-center justify-center">
               <ArrowPathIcon height={22} width={22} className="animate-spin" />
               <span>Loading</span>
             </div>
@@ -224,7 +234,7 @@ const EditMineral = () => {
                       value: e.target.value,
                     })
                   }
-                  className="w-full !rounded-lg"
+                  className="w-full rounded-lg!"
                 />
               </div>
             </div>

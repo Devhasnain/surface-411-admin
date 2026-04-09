@@ -221,7 +221,7 @@ const AddNewLocation = memo(({ isOpen, closeModal }: Props) => {
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[700px]">
+      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-175">
         <form onSubmit={handleSubmit} className="p-8 mt-10 flex flex-col gap-3">
           <div className="">
             <Label htmlFor="name">Name</Label>

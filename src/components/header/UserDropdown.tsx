@@ -1,8 +1,10 @@
+import { useDispatch, useSelector } from "react-redux";
 import { useCallback, useState } from "react";
+
+import { getUser, resetAuth } from "../../store/slices/authSlice";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
-import { getUser, resetAuth } from "../../store/slices/authSlice";
-import { useDispatch, useSelector } from "react-redux";
+
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -27,12 +29,12 @@ export default function UserDropdown() {
         className="flex items-center text-gray-700 dropdown-toggle dark:text-gray-400"
       >
         <span className="mr-3 overflow-hidden rounded-full flex flex-col items-center justify-center h-11 w-11 border border-gray-200 dark:border-gray-800">
-          {
-            user?.picture ?
-            <img src={user?.picture} className="object-cover" alt="User" />
-            :
+          {/* {
+            user?.picture ? */}
+            <img src={'/favicon.png'} className="object-cover" alt="User" />
+            {/* :
             <span>{user?.name ? user?.name[0]?.toUpperCase() : "Un"}</span>
-          }
+          } */}
         </span>
 
         {user && (

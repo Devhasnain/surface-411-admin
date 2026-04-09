@@ -160,10 +160,10 @@ const AddMineralForm = () => {
               options={location?.filter(
                 (item: any) =>
                   item?.type === "county" &&
-                  item?.state?.name === formInputs.state.label
+                  item?.state?.code === formInputs.state.value
               )}
               optionLabel="name"
-              optionValue="name"
+              optionValue="code"
               filter={true}
               value={formArray.counties}
               onChange={(e) =>
