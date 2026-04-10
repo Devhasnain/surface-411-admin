@@ -1,6 +1,8 @@
 import { ChangeEvent, useState } from "react";
-import AddUserModel from "./AddUserModel";
+
 import ResetPasswordModal from "./ResetPasswordModal";
+import AddUserModel from "./AddUserModel";
+
 
 type Props = {
   user: any;
@@ -40,11 +42,7 @@ export default function UserMetaCard({
         <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-col items-center w-full gap-6 xl:flex-row">
             <div className="flex flex-col items-center justify-center w-20 h-20 overflow-hidden border border-gray-200 rounded-full dark:border-gray-800">
-              {user?.picture ? (
-                <img src={user?.picture} className="object-cover" alt="user" />
-              ) : (
-                <span className="text-2xl">{user?.name[0]?.toUpperCase()}</span>
-              )}
+              <img src={"/favicon.png"} className="object-cover" alt="User" />
             </div>
             <div className="order-3 xl:order-2">
               <h4 className="mb-2 text-lg font-semibold text-center text-gray-800 dark:text-white/90 xl:text-left">
