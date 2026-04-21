@@ -1,17 +1,12 @@
-import { ChangeEvent, FormEvent, memo, useCallback, useState, } from "react";
+import { ChangeEvent, FormEvent, memo, useCallback, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { MultiSelect } from "primereact/multiselect";
 import toast from "react-hot-toast";
 
+import { TodoInput, TextArea, InputField as Input, Button, Label, } from "../../components/index";
 import { getLocations } from "../../store/slices/locationsSlice";
-import TodoInput from "../../components/ui/todoInput/TodoInput";
 import { addMineral } from "../../store/slices/mineralsSlice";
-import TextArea from "../../components/form/input/TextArea";
-import Input from "../../components/form/input/InputField";
 import { getToken } from "../../store/slices/authSlice";
-import Button from "../../components/ui/button/Button";
 import { useMutation } from "../../hooks/useMutation";
-import Label from "../../components/form/Label";
 import SelectLocation from "./SelectLocation";
 import { endpoints } from "../../config/api";
 
@@ -28,7 +23,7 @@ let initialInputValues = {
   city: "",
 };
 
-let initialArrayValues = {
+let initialArrayValues: any = {
   names: [],
   emails: [],
   numbers: [],
@@ -55,12 +50,30 @@ const AddMineralForm = () => {
   };
 
   const handleOnChangeArray = (e: any) => {
-    setFormArray((pre) => ({ ...pre, [e.fieldName]: e.value }));
+    setFormArray((pre: any) => ({ ...pre, [e.fieldName]: e.value }));
   };
 
   const handleArrayRemoveItem = (e: { fieldName: string; value: any }) => {
-    setFormArray((pre) => ({ ...pre, [e.fieldName]: e.value }));
+    setFormArray((pre: any) => ({ ...pre, [e.fieldName]: e.value }));
   };
+
+  const handleCountyToggle = useCallback(
+    (countyName: string) => {
+      setFormArray((pre: any) => ({
+        ...pre,
+        counties: pre.counties.includes(countyName)
+          ? pre.counties.filter((a: any) => a !== countyName)
+          : [...pre.counties, countyName],
+      }));
+    },
+    []
+  );
+
+  const filteredCounties = location?.filter(
+    (item: any) =>
+      item?.type === "county" &&
+      item?.state?.code === formInputs.state.value
+  ) || [];
 
   const handleOnSubmit = useCallback(
     (e: FormEvent) => {
@@ -96,6 +109,8 @@ const AddMineralForm = () => {
     },
     [formArray, formInputs]
   );
+
+  console.log(formArray);
 
   return (
     <form className="flex flex-col gap-4" onSubmit={handleOnSubmit}>
@@ -153,35 +168,39 @@ const AddMineralForm = () => {
             className="z-10"
             onChange={handleOnChange}
           />
-          <div className="">
+          {formInputs.state.value && <div className="">
             <Label htmlFor="counties">Counties</Label>
-            <MultiSelect
-              placeholder="Select Counties"
-              options={location?.filter(
-                (item: any) =>
-                  item?.type === "county" &&
-                  item?.state?.code === formInputs.state.value
-              )}
-              optionLabel="name"
-              optionValue="code"
-              filter={true}
-              value={formArray.counties}
-              onChange={(e) =>
-                handleOnChangeArray({
-                  fieldName: "counties",
-                  value: e.target.value,
-                })
-              }
-              className="w-full rounded-lg!"
-            />
-          </div>
+            <div className="flex flex-row items-center flex-wrap gap-2">
+              {filteredCounties.map((item: any) => {
+                const isSelected = formArray.counties.includes(item?.name);
+                return (
+                  <span
+                    onClick={() => handleCountyToggle(item?.name)}
+                    className={`cursor-pointer rounded-xl px-4 py-2 border transition-colors ${
+                      isSelected
+                        ? "bg-blue-500 text-white border-blue-500"
+                        : "text-gray-500 border-gray-300 hover:border-blue-500"
+                    }`}
+                    key={item?.code || item?.name}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ")
+                        handleCountyToggle(item?.name);
+                    }}
+                  >
+                    {item.name}
+                  </span>
+                );
+              })}
+            </div>
+          </div>}
         </div>
       </div>
       <div>
         <span className="font-medium text-lg">Mineral Owner Location</span>
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-5">
-            
             <div className="">
               <Label htmlFor="city">City</Label>
               <Input
@@ -204,8 +223,6 @@ const AddMineralForm = () => {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-5">
-           
-
             <SelectLocation
               name="ownerState"
               label="Onwer state"
@@ -213,7 +230,7 @@ const AddMineralForm = () => {
               value={formInputs.ownerState}
               onChange={handleOnChange}
             />
-             <TodoInput
+            <TodoInput
               label="Address"
               placeholder="Address"
               fieldName="addresses"
