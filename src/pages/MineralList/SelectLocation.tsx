@@ -1,13 +1,10 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
-import { useDispatch, useSelector } from "react-redux";
 import AsyncSelect from "react-select/async";
 
-import { getLocations, setLocations } from "../../store/slices/locationsSlice";
-import { getToken } from "../../store/slices/authSlice";
-import { useQuery } from "../../hooks/useQuery";
+import { useFetchLocationsFullList } from "../../hooks";
+import { useLocationStore } from "../../store";
 import { Label } from "../../components/index";
-import { endpoints } from "../../config/api";
 
 
 type Props = {
@@ -28,20 +25,19 @@ const SelectLocation = ({
   label,
   placeholder = "Location",
 }: Props) => {
+  const locationsApi = useFetchLocationsFullList();
+  const locationStore = useLocationStore();
   const [select, setSelect] = useState<any>(value);
-  const token = useSelector(getToken) ?? "";
-  const dispatch = useDispatch();
 
-  const rawLocations = useSelector(getLocations);
   const locations = useMemo(
     () =>
-      rawLocations
+      locationStore.locations
         ?.filter((item) => item?.type === "state")
         ?.map((item) => ({
           label: item?.name,
           value: item?.code,
         })) ?? [],
-    [rawLocations]
+    [locationStore.locations]
   );
 
   const filteredLocations = useCallback(
@@ -55,12 +51,6 @@ const SelectLocation = ({
     [locations]
   );
 
-  const { request, data, error, loading } = useQuery(
-    endpoints.getLocations,
-    token,
-    !rawLocations?.length
-  );
-
   const promiseOptions = useCallback(
     (inputValue: string) =>
       new Promise<any[]>((resolve) => {
@@ -70,10 +60,10 @@ const SelectLocation = ({
   );
 
   useEffect(() => {
-    if (data?.locations?.length) {
-      dispatch(setLocations(data.locations));
+    if (locationsApi.data?.locations?.length) {
+      locationStore.setLocations(locationsApi.data?.locations);
     }
-  }, [data, dispatch]);
+  }, [locationsApi.data]);
 
   useEffect(() => {
     if (select?.value && name) {
@@ -100,13 +90,15 @@ const SelectLocation = ({
           cacheOptions
           required={required}
           defaultOptions={locations}
-          isLoading={loading}
+          isLoading={locationsApi.isPending}
           loadOptions={promiseOptions}
         />
         {!locations?.length ? (
           <ArrowPathIcon
-            onClick={request}
-            className={`cursor-pointer ${loading ? "animate-spin" : ""}`}
+            onClick={() => locationsApi.refetch()}
+            className={`cursor-pointer ${
+              locationsApi.isPending ? "animate-spin" : ""
+            }`}
             height={20}
             width={20}
             color="gray"

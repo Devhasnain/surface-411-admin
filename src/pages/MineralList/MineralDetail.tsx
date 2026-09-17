@@ -2,23 +2,17 @@ import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { Link, useParams } from "react-router";
 
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
-import { Label, PageMeta, Tile } from "../../components";
-import { useQuery } from "../../hooks/useQuery";
-import { endpoints } from "../../config/api";
+import { useMineralDetails } from "../../hooks";
+import { Label, Tile } from "../../components";
 
 
 const MineralDetail = () => {
   const { id } = useParams();
 
-  const { data, loading } = useQuery(
-    `${endpoints.getMinerals}?id=${id}`,
-    null,
-    true
-  );
+  const { data, isPending: loading } = useMineralDetails(id || "");
 
   return (
     <>
-      <PageMeta title="Mineral" description="" />
       <PageBreadcrumb
         pageTitle="Mineral"
         previousTitle="Mineral list"
@@ -35,7 +29,7 @@ const MineralDetail = () => {
             <div className="flex flex-col gap-3">
               <div className="">
                 <Label className="mb-0">Name</Label>
-               <div className="flex flex-row items-center justify-start flex-wrap gap-x-4 gap-y-1">
+                <div className="flex flex-row items-center justify-start flex-wrap gap-x-4 gap-y-1">
                   {data?.mineral?.names?.map((name: string, id: number) => (
                     <span
                       key={id}
@@ -117,8 +111,11 @@ const MineralDetail = () => {
                 </div>
               </div>
 
-              <Link className="underline text-blue-600" to={`/edit-mineral/${id}`}>
-              Edit
+              <Link
+                className="underline text-blue-600"
+                to={`/edit-mineral/${id}`}
+              >
+                Edit
               </Link>
             </div>
           )

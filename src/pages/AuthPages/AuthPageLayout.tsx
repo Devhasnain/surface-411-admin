@@ -1,54 +1,15 @@
-import React, { useCallback, useEffect } from "react";
-import GridShape from "../../components/common/GridShape";
+import React from "react";
+
 import ThemeTogglerTwo from "../../components/common/ThemeTogglerTwo";
+import GridShape from "../../components/common/GridShape";
 import Logo from "../../components/brand/Logo";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  getToken,
-  getUser,
-  resetAuth,
-  setUser,
-} from "../../store/slices/authSlice";
-import { useNavigate } from "react-router";
-import baseApi, { endpoints, UserTypes } from "../../config/api";
-import toast from "react-hot-toast";
+
 
 export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const navigate = useNavigate();
-  const user = useSelector(getUser);
-  const token = useSelector(getToken);
-  const dispatch = useDispatch();
-
-  const authenticateUser = useCallback(async () => {
-    try {
-      const res = await baseApi.get(endpoints.lookup, {
-        headers: { Authorization: token },
-      });
-      if (res.data?.user?.role !== UserTypes.admin) {
-        toast.error("You don't have permissions to access admin panel.");
-        navigate("/signin");
-        dispatch(resetAuth());
-        return;
-      }
-      dispatch(setUser(res.data?.user));
-      navigate("/");
-    } catch (error) {
-      dispatch(resetAuth());
-    }
-  }, [token, user]);
-
-  useEffect(() => {
-    if (user) {
-      navigate("/");
-    } else if (token) {
-      authenticateUser();
-    }
-  }, [user, token]);
-
   return (
     <div className="relative p-6 bg-white z-1 dark:bg-gray-900 sm:p-0">
       <div className="relative flex flex-col justify-center w-full h-screen lg:flex-row dark:bg-gray-900 sm:p-0">

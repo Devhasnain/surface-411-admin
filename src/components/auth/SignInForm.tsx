@@ -1,20 +1,18 @@
-import { ChangeEvent, memo, useCallback, useState } from "react";
+import { ChangeEvent, memo, useState } from "react";
+import toast from "react-hot-toast";
 import { Link } from "react-router";
+
+import GetApiErrorMessage from "../../utils/GetApiErrorMessage";
 import { EyeCloseIcon, EyeIcon } from "../../icons";
-import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Button from "../ui/button/Button";
-import toast from "react-hot-toast";
-import GetApiErrorMessage from "../../utils/GetApiErrorMessage";
-import { useMutation } from "../../hooks/useMutation";
-import { endpoints, UserTypes } from "../../config/api";
-import { useDispatch } from "react-redux";
-import { setToken } from "../../store/slices/authSlice";
+import { useLogin } from "../../hooks";
+import Label from "../form/Label";
 
- const SignInForm =()=> {
-  const dispatch = useDispatch();
+
+const SignInForm = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const { request, loading } = useMutation(endpoints.login);
+  const { mutate: login, isPending } = useLogin();
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -25,18 +23,13 @@ import { setToken } from "../../store/slices/authSlice";
     setForm((pre) => ({ ...pre, [name]: value }));
   };
 
-  const handleOnSubmit = useCallback(
-    async (e: any) => {
-      try {
-        e.preventDefault();
-        const data = await request(form);
-        dispatch(setToken(data?.token));
-      } catch (error) {
-        toast.error(GetApiErrorMessage(error));
-      }
-    },
-    [form, request]
-  );
+  const handleOnSubmit = (e: any) => {
+    e.preventDefault();
+    login(form, {
+      onSuccess: () => toast.success("Login successfull"),
+      onError: (error) => toast.error(GetApiErrorMessage(error)),
+    });
+  };
 
   return (
     <div className="flex flex-col flex-1">
@@ -106,11 +99,11 @@ import { setToken } from "../../store/slices/authSlice";
                 <div>
                   <Button
                     disabled={
-                      !form.email.trim() || !form.password.trim() || loading
+                      !form.email.trim() || !form.password.trim() || isPending
                     }
                     className="w-full"
                     size="sm"
-                    loading={loading}
+                    loading={isPending}
                   >
                     Sign in
                   </Button>
@@ -122,5 +115,5 @@ import { setToken } from "../../store/slices/authSlice";
       </div>
     </div>
   );
-}
-export default memo(SignInForm)
+};
+export default memo(SignInForm);

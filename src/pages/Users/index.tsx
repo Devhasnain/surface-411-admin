@@ -1,124 +1,75 @@
-import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { ChangeEvent, useCallback, useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import { ChangeEvent, useCallback, useState } from "react";
 import toast from "react-hot-toast";
 import { Link } from "react-router";
 
-import { addUser, getUsers, removeUser, setUsers, } from "../../store/slices/usersSlice";
 import BasicTableOne from "../../components/tables/BasicTables/BasicTableOne";
 import { TableBody, TableCell, TableRow } from "../../components/ui/table";
 import AddUserModel from "../../components/UserProfile/AddUserModel";
 import IconButton from "../../components/ui/iconButton/IconButton";
-import { getToken, getUser } from "../../store/slices/authSlice";
 import GetApiErrorMessage from "../../utils/GetApiErrorMessage";
-import PageMeta from "../../components/common/PageMeta";
+import { useCreateUser, useFetchUsers } from "../../hooks";
 import Button from "../../components/ui/button/Button";
-import { Plans } from "../../config/subscriptionPlans";
-import baseApi, { endpoints } from "../../config/api";
-import { useMutation } from "../../hooks/useMutation";
 import { formatToDMY } from "../../utils/DateFormate";
-import { useQuery } from "../../hooks/useQuery";
 import { useModal } from "../../hooks/useModal";
+import { useAuthStore } from "../../store";
 
 
 const Users = () => {
-  const auth = useSelector(getUser);
-  const users = useSelector(getUsers);
-  const token = useSelector(getToken);
-  const dispatch = useDispatch();
-
-  const { data, loading, error, request } = useQuery(
-    endpoints.getUsers,
-    token ?? "",
-    !users?.length
-  );
-
-  useEffect(() => {
-    if (data) {
-      dispatch(setUsers(data?.users ?? []));
-    }
-  }, [data, dispatch]);
-
-  const getActivePlanName = useCallback(
-    (id: string) => {
-      return Plans.find((item) => item.stripePriceId === id)?.name ?? "-";
-    },
-    [users]
-  );
-
-  const handleDelete = useCallback(
-    async (id: any) => {
-      try {
-        await baseApi.delete(`${endpoints.deleteUser}?id=${id}`, {
-          headers: { Authorization: token },
-        });
-        dispatch(removeUser(id));
-      } catch (error) {
-        toast.error(GetApiErrorMessage(error));
-      }
-    },
-    [users, dispatch]
-  );
+  const auth = useAuthStore((state) => state.user);
+  const { data, isPending, refetch } = useFetchUsers();
 
   return (
     <>
-      <PageMeta title={"Users | Petro411"} description="" />
-      <Header isLoading={loading} onReload={request} />
+      <Header isLoading={isPending} onReload={refetch} />
       <BasicTableOne head={["User", "Email", "Role", "Created at"]}>
-        <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-          {users.map((user) => (
-            <TableRow key={user?._id} className="group">
-              <TableCell className="px-5 py-4 sm:px-6 text-start">
-                <Link
-                  to={
-                    user?._id === auth?._id ? "/profile" : `/user/${user?._id}`
-                  }
-                  className="flex items-center gap-3"
-                >
-                  <div className="w-10 h-10 overflow-hidden rounded-full border flex flex-col items-center justify-center">
-                    {user?.picture ? (
-                      <img
-                        width={40}
-                        height={40}
-                        src={user.picture}
-                        alt={"user image"}
-                      />
-                    ) : (
-                      <span>{user?.name[0]?.toUpperCase()}</span>
-                    )}
-                  </div>
-                  <div>
-                    <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                      {user?.name}
-                    </span>
-                  </div>
-                </Link>
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                {user?.email}
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                {user?.role[0]?.toUpperCase()}
-                {user?.role?.slice(1)}
-              </TableCell>
-              <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                {formatToDMY(user?.createdAt)}
-              </TableCell>
-              {/* <TableCell className="text-end px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                {auth?._id !== user?._id && (
-                  <TrashIcon
-                    className="opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                    onClick={() => handleDelete(user?._id)}
-                    height={18}
-                    width={18}
-                  />
-                )}
-              </TableCell> */}
-            </TableRow>
-          ))}
+        <TableBody className="divide-y divide-gray-100 dark:divide-white/5">
+          {data?.users?.length
+            ? data?.users?.map((user: any) => (
+                <TableRow key={user?._id} className="group">
+                  <TableCell className="px-5 py-4 sm:px-6 text-start">
+                    <Link
+                      to={
+                        user?._id === auth?._id
+                          ? "/profile"
+                          : `/user/${user?._id}`
+                      }
+                      className="flex items-center gap-3"
+                    >
+                      <div className="w-10 h-10 overflow-hidden rounded-full border flex flex-col items-center justify-center">
+                        {user?.picture ? (
+                          <img
+                            width={40}
+                            height={40}
+                            src={user.picture}
+                            alt={"user image"}
+                          />
+                        ) : (
+                          <span>{user?.name[0]?.toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div>
+                        <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                          {user?.name}
+                        </span>
+                      </div>
+                    </Link>
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                    {user?.email}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                    {user?.role[0]?.toUpperCase()}
+                    {user?.role?.slice(1)}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                    {formatToDMY(user?.createdAt)}
+                  </TableCell>
+                </TableRow>
+              ))
+            : ""}
         </TableBody>
       </BasicTableOne>
-      {/* <UsersTable/> */}
     </>
   );
 };
@@ -139,10 +90,8 @@ const initialValues = {
 };
 
 const Header = ({ isLoading, onReload }: HeaderProps) => {
-  const dispatch = useDispatch();
-  const token = useSelector(getToken);
   const { isOpen, openModal, closeModal } = useModal();
-  const { request, loading } = useMutation(endpoints.createUser);
+  const { mutate, isPending } = useCreateUser();
   const [form, setForm] = useState(initialValues);
   const [haveChanges, setHaveChanges] = useState(false);
 
@@ -168,22 +117,18 @@ const Header = ({ isLoading, onReload }: HeaderProps) => {
     [form]
   );
 
-  const handleSave = useCallback(
-    async (e: any) => {
-      try {
-        e.preventDefault();
-        const res = await request(form, null, token ?? "");
-        dispatch(addUser(res?.user));
+  const handleSave = (e: any) => {
+    e.preventDefault();
+    mutate(form, {
+      onSuccess: () => {
         setHaveChanges(false);
         toast.success("New user has been added.");
         setForm(initialValues);
         closeModal();
-      } catch (error) {
-        toast.error(GetApiErrorMessage(error));
-      }
-    },
-    [form]
-  );
+      },
+      onError: (error) => toast.error(GetApiErrorMessage(error)),
+    });
+  };
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
@@ -218,7 +163,7 @@ const Header = ({ isLoading, onReload }: HeaderProps) => {
         form={form}
         onChange={handleOnChange}
         haveChanges={haveChanges}
-        loading={loading}
+        loading={isPending}
         buttonTitle="Save"
       />
     </>

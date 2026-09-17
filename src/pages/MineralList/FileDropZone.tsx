@@ -1,58 +1,37 @@
+import { ChangeEvent, useCallback, useState } from "react";
+import { MultiSelect } from "primereact/multiselect";
+import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
-import { z } from "zod";
 
-
-export const mineralSchema = z.object({
-  name: z.string().min(1),
-  emails: z.array(z.string().email()).nonempty(),
-  numbers: z.array(z.string().min(1)).nonempty(),
-  addresses: z.array(z.string().min(1)).nonempty(),
-  counties: z.array(z.string().min(1)).nonempty(),
-  zipcode: z.string().min(1),
-  description: z.string().optional(),
-  city: z.string().min(1),
-  state: z.object({
-    name: z.string().min(1),
-    code: z.string().min(1),
-  }),
-});
-import { ChangeEvent, useCallback, useState } from "react";
-import { useDropzone } from "react-dropzone";
-import { useMutation } from "../../hooks/useMutation";
-import { endpoints } from "../../config/api";
-import SelectLocation from "./SelectLocation";
-import { MultiSelect } from "primereact/multiselect";
+import { useAddMineralsBulk } from "../../hooks";
 import { Button, Label } from "../../components";
-import { getLocations } from "../../store/slices/locationsSlice";
-import { useSelector } from "react-redux";
-import GetApiErrorMessage from "../../utils/GetApiErrorMessage";
+import { useLocationStore } from "../../store";
+import SelectLocation from "./SelectLocation";
+
 
 const FileDropZone = () => {
-  const location = useSelector(getLocations);
+  const location = useLocationStore((state) => state.locations);
   const [form, setForm] = useState({
     state: { label: "", value: "" },
     counties: [],
   });
   const [data, setData] = useState<any>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const { request, loading } = useMutation();
+  const { mutate, isPending: loading } = useAddMineralsBulk();
 
-  async function uploadInChunks(data: any[], form?: any) {
+  function uploadInChunks(data: any[], form?: any) {
     const chunks = chunkArray(data, 500);
 
     for (let i = 0; i < chunks.length; i++) {
-      try {
-        await request(
-          { list: chunks[i], ...form },
-          endpoints.uploadBulkMineral
-        );
-      } catch (err) {
-        console.error(`Error uploading chunk ${i + 1}:`, err);
-        break;
-      }
+      mutate(
+        { list: chunks[i], ...form },
+        {
+          onError: (err) =>
+            toast.error(`Error uploading chunk ${i + 1}: ${err?.message}`),
+        }
+      );
     }
   }
 
@@ -67,16 +46,11 @@ const FileDropZone = () => {
     setIsLoading(true);
 
     if (fileExtension === "csv") {
-      // Parse CSV using PapaParse
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
         complete: async (results) => {
-          //  setData(results.data);
           setData(results?.data);
-          // await uploadInChunks(results.data);
-          // toast.success("CSV file parsed and uploaded successfully.");
-
           setIsLoading(false);
         },
         error: () => {
@@ -85,7 +59,6 @@ const FileDropZone = () => {
         },
       });
     } else if (fileExtension === "xlsx" || fileExtension === "xls") {
-      // Parse Excel using XLSX
       const reader = new FileReader();
       reader.onload = async (event) => {
         try {
@@ -96,8 +69,6 @@ const FileDropZone = () => {
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
           setData(jsonData);
-          // await uploadInChunks(jsonData);
-          // toast.success("Excel file parsed and uploaded successfully.");
         } catch {
           toast.error("Failed to parse Excel file.");
         } finally {
@@ -140,27 +111,11 @@ const FileDropZone = () => {
         toast.error("Please select both a state and at least one county.");
         return;
       }
-      setIsUploading(true);
-      const promise = toast.promise(uploadInChunks(data, form), {
-        loading: "Uploading data...",
-      });
-      promise.then(() => {
-        toast.dismiss();
-        toast.success("Data uploaded successfully");
-        setData(null);
-      });
-
-      promise.catch((err) => {
-        toast.dismiss();
-        toast.error(GetApiErrorMessage(err));
-      });
-
-      promise.finally(() => {
-        setIsUploading(false);
-      });
+      uploadInChunks(data, form);
     },
     [form]
   );
+
 
   return (
     <div>
@@ -204,7 +159,7 @@ const FileDropZone = () => {
                       value: e.target.value,
                     })
                   }
-                  className="w-full !rounded-lg"
+                  className="w-full rounded-lg!"
                 />
               </div>
             </div>
@@ -217,8 +172,8 @@ const FileDropZone = () => {
 
           <div>
             <Button
-              disabled={loading || isUploading}
-              loading={isUploading}
+              disabled={loading}
+              loading={loading}
               className="self-start"
               size="sm"
               type="submit"
@@ -244,10 +199,10 @@ const FileDropZone = () => {
             <input {...getInputProps()} disabled={isLoading} />
             <div className="dz-message flex flex-col items-center m-0!">
               {/* Icon Container */}
-              <div className="mb-[22px] flex justify-center">
-                <div className="flex h-[68px] w-[68px]  items-center justify-center rounded-full bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-400">
+              <div className="mb-5.5 flex justify-center">
+                <div className="flex h-17 w-17  items-center justify-center rounded-full bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-400">
                   {isLoading ? (
-                    <i className="pi pi-spinner !animate-spin "></i>
+                    <i className="pi pi-spinner animate-spin! "></i>
                   ) : (
                     <svg
                       className="fill-current"
@@ -269,7 +224,7 @@ const FileDropZone = () => {
               <h4 className="mb-3 font-semibold text-gray-800 text-theme-xl dark:text-white/90">
                 {isDragActive ? "Drop Files Here" : "Drag & Drop Files Here"}
               </h4>
-              <span className=" text-center mb-5 block w-full max-w-[290px] text-sm text-gray-700 dark:text-gray-400">
+              <span className=" text-center mb-5 block w-full max-w-72.5 text-sm text-gray-700 dark:text-gray-400">
                 Drag and drop your CSV, or XLSX files here or browse
               </span>
               <div className="flex flex-row items-center justify-center gap-5">

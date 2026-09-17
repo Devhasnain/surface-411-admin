@@ -1,13 +1,14 @@
 import { ChangeEvent } from "react";
-import { Modal } from "../ui/modal";
-import Label from "../form/Label";
-import Input from "../form/input/InputField";
+
 import TextArea from "../form/input/TextArea";
+import Checkbox from "../form/input/Checkbox";
+import Input from "../form/input/InputField";
+import { useAuthStore } from "../../store";
 import Button from "../ui/button/Button";
 import Select from "../form/Select";
-import Checkbox from "../form/input/Checkbox";
-import { useSelector } from "react-redux";
-import { getUser } from "../../store/slices/authSlice";
+import { Modal } from "../ui/modal";
+import Label from "../form/Label";
+
 
 type Props = {
   user: any;
@@ -42,10 +43,10 @@ const AddUserModel = ({
   loading,
   buttonTitle = "Save Changes",
 }: Props) => {
-  const auth = useSelector(getUser);
+  const auth = useAuthStore((state) => state.user);
   return (
-    <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[700px]">
-      <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
+    <Modal isOpen={isOpen} onClose={closeModal} className="max-w-175">
+      <div className="no-scrollbar relative w-full max-w-175 overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
         <div className="px-2 pr-14">
           <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
             Personal Information

@@ -1,14 +1,10 @@
-import PageMeta from "../../components/common/PageMeta";
-import AuthLayout from "./AuthPageLayout";
 import SignInForm from "../../components/auth/SignInForm";
+import AuthLayout from "./AuthPageLayout";
+
 
 export default function SignIn() {
   return (
     <>
-      <PageMeta
-        title="Petro411 | Sign In"
-        description=""
-      />
       <AuthLayout>
         <SignInForm />
       </AuthLayout>

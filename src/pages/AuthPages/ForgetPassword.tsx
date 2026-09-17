@@ -1,11 +1,10 @@
-import PageMeta from "../../components/common/PageMeta";
-import AuthLayout from "./AuthPageLayout";
 import ForgetpasswordForm from "../../components/auth/ForgetpasswordForm";
+import AuthLayout from "./AuthPageLayout";
+
 
 const ForgetPassword = () => {
   return (
     <>
-      <PageMeta title="Petro411 | Forget password" description="" />
       <AuthLayout>
         <ForgetpasswordForm />
       </AuthLayout>

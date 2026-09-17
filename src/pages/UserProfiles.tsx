@@ -1,16 +1,13 @@
 import { ChangeEvent, useCallback, useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
 import toast from "react-hot-toast";
 
-import { getToken, getUser, updateUser } from "../store/slices/authSlice";
 import UserMetaCard from "../components/UserProfile/UserMetaCard";
 import UserInfoCard from "../components/UserProfile/UserInfoCard";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import GetApiErrorMessage from "../utils/GetApiErrorMessage";
-import PageMeta from "../components/common/PageMeta";
-import { useMutation } from "../hooks/useMutation";
 import { useModal } from "../hooks/useModal";
-import { endpoints } from "../config/api";
+import { useUpdateProfile } from "../hooks";
+import { useAuthStore } from "../store";
 
 
 const initialValues = {
@@ -23,12 +20,10 @@ const initialValues = {
 };
 
 export default function UserProfiles() {
-  const user = useSelector(getUser);
+  const { user, updateUser } = useAuthStore();
+  const { mutate, isPending } = useUpdateProfile();
 
   const { isOpen, openModal, closeModal } = useModal();
-  const token = useSelector(getToken);
-  const dispatch = useDispatch();
-  const { loading, request } = useMutation(endpoints.updateProfile);
   const [haveChanges, setHaveChanges] = useState(false);
   const [form, setForm] = useState(initialValues);
 
@@ -52,31 +47,26 @@ export default function UserProfiles() {
     [form]
   );
 
-  const handleSave = useCallback(
-    async (e: any) => {
-      try {
-        e.preventDefault();
-        await request(
-          {
-            name: form?.name,
-            email: form?.email,
-            role: form?.role,
-            phone: form?.phone,
-            bio: form?.bio,
-          },
-          null,
-          token ?? ""
-        );
-        dispatch(updateUser(form));
-        setHaveChanges(false);
-        toast.success("Profile updated.");
-        closeModal();
-      } catch (error) {
-        toast.error(GetApiErrorMessage(error));
+  const handleSave = (e: any) => {
+    e.preventDefault();
+    mutate(
+      {
+        name: form?.name,
+        email: form?.email,
+        role: form?.role,
+        phone: form?.phone,
+        bio: form?.bio,
+      },
+      {
+        onSuccess: () => {
+          updateUser(form);
+          toast.success("Profile Updated succesfully.");
+          closeModal();
+        },
+        onError: (error) => toast.error(GetApiErrorMessage(error)),
       }
-    },
-    [form]
-  );
+    );
+  };
 
   useEffect(() => {
     if (user) {
@@ -97,7 +87,6 @@ export default function UserProfiles() {
 
   return (
     <>
-      <PageMeta title={`${user?.name} | Petro411`} description="" />
       <PageBreadcrumb pageTitle="Profile" />
       <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/3 lg:p-6">
         <div className="space-y-6">
@@ -110,7 +99,7 @@ export default function UserProfiles() {
             form={form}
             onChange={handleOnChange}
             haveChanges={haveChanges}
-            loading={loading}
+            loading={isPending}
           />
           <UserInfoCard user={user} />
         </div>

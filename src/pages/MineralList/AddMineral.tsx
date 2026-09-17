@@ -1,20 +1,22 @@
 import { memo, useState } from "react";
-import PageMeta from "../../components/common/PageMeta";
+
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
+import BulkUpdateMinerals from "./BulkUpdateMinerals";
 import Tile from "../../components/common/Tile";
 import AddMineralForm from "./AddMineralForm";
-import UploadMineralFile from "./UploadMineralFile";
+import FileDropZone from "./FileDropZone";
+
 
 const AddMineral = () => {
     const [activeTab,setActiveTab] = useState("manual")
   return (
     <>
-      <PageMeta title="Add Mineral |" description="" />
       <PageBreadcrumb pageTitle="Add Mineral" />
       <Tile>
         <div className="flex flex-row items-center">
             <button onClick={()=>setActiveTab("manual")} className={`px-10 pb-2 border-b-2 ${activeTab === "manual" ? 'border-blue-400 dark:text-white' : 'border-gray-200 dark:border-gray-800 dark:text-gray-400'}`}>Manual</button>
             <button onClick={()=>setActiveTab("upload")} className={`px-10 pb-2 border-b-2 ${activeTab === "upload" ? 'border-blue-400 dark:text-white' : 'border-gray-200 dark:border-gray-800 dark:text-gray-400'}`}>Upload file</button>
+            <button onClick={()=>setActiveTab("bulk-update")} className={`px-10 pb-2 border-b-2 ${activeTab === "bulk-update" ? 'border-blue-400 dark:text-white' : 'border-gray-200 dark:border-gray-800 dark:text-gray-400'}`}>Bulk Update Minerals</button>
         </div>
         <div className="py-10">
 
@@ -22,7 +24,10 @@ const AddMineral = () => {
             activeTab === "manual" && <AddMineralForm/>
         }
         {
-            activeTab === "upload" && <UploadMineralFile/>
+            activeTab === "upload" && <FileDropZone/>
+        }
+        {
+            activeTab === "bulk-update" && <BulkUpdateMinerals/>
         }
         </div>
 

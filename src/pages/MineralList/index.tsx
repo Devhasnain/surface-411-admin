@@ -1,32 +1,28 @@
-import { ArrowPathIcon, EyeIcon, MagnifyingGlassIcon, PencilSquareIcon, } from "@heroicons/react/24/outline";
-import { ChangeEvent, memo, useCallback, useEffect, useMemo, useState, } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { MultiSelect } from "primereact/multiselect";
-import { Link, useLocation } from "react-router";
-import { DataTable } from "primereact/datatable";
-import { Dropdown } from "primereact/dropdown";
-import { Column } from "primereact/column";
+import { ArrowPathIcon, MagnifyingGlassIcon, } from "@heroicons/react/24/outline";
+import { ChangeEvent, memo, useCallback, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import toast from "react-hot-toast";
 
-import { Button, IconButton, Label, Modal, PageMeta, InputField as Input, } from "../../components";
-import { removeMineral } from "../../store/slices/mineralsSlice";
-import { getLocations } from "../../store/slices/locationsSlice";
-import { useDeleteRequest } from "../../hooks/useDeleteRequest";
-import { getToken } from "../../store/slices/authSlice";
-import baseApi, { endpoints } from "../../config/api";
+import { Button, IconButton, Label, InputField as Input, AgGridTable, DeleteConfirmation, } from "../../components";
+import { createActionsColumn, createSelectColumn, createTextColumn, } from "../../libs";
+import { useDeleteMineral, useFetchMinerals } from "../../hooks";
+import GetApiErrorMessage from "../../utils/GetApiErrorMessage";
 import { useModal } from "../../hooks/useModal";
+import { useLocationStore } from "../../store";
 import { navItems } from "../../layout/Routes";
 import SelectLocation from "./SelectLocation";
-import { TrashBinIcon } from "../../icons";
 
 
 export default function MineralList() {
+  const [delMineralId, setDelMineralId] = useState<string | null>(null);
+  const { isOpen, closeModal, openModal } = useModal();
   const [page, setPage] = useState(1);
-  const [rows, setRows] = useState(10);
-  const [mineralsList, setMineralsList] = useState([]);
-  const [total, setTotal] = useState(0);
-  const token = useSelector(getToken);
-  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const [form, setForm] = useState({
+    name: "",
+    state: { label: "", value: "" },
+    county: "",
+  });
   const [showSearch, setShowSearch] = useState(false);
   const pathname = useLocation()?.pathname;
   const pageTitle = useMemo(() => {
@@ -36,47 +32,65 @@ export default function MineralList() {
       );
     return "";
   }, [pathname]);
+  const {
+    data,
+    isPending: loading,
+    refetch,
+  } = useFetchMinerals({
+    page,
+    rows: 10,
+    name: form.name,
+    stateCode: form.state.value,
+    county: form.county || "",
+  });
+  const { mutate: deleteMineral, isPending: isDeleting } = useDeleteMineral();
 
   const toggleSearch = () => setShowSearch((pre) => !pre);
 
-  const fetchMinerals = useCallback(
-    async ({
-      name = "",
-      stateCode = "",
-      counties = "",
-    }: {
-      name?: string;
-      stateCode?: string;
-      counties?: string;
-    }) => {
-      setLoading(true);
-      try {
-        const res = await baseApi.get(
-          `${endpoints.getPaginatedMinerals}?page=${page}&limit=${rows}&name=${name}&stateCode=${stateCode}&counties=${counties}`,
-          {
-            headers: { Authorization: `${token}` },
-          }
-        );
-        setMineralsList(res.data?.minerals || []);
-        setTotal(res.data?.total || 0);
-      } catch (error) {
-        toast.error("Failed to load minerals");
-        setLoading(false);
-        return;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [page, rows, token]
-  );
+  const confirmDeletion = (id: string) => {
+    setDelMineralId(id);
+    openModal();
+  };
 
-  useEffect(() => {
-    fetchMinerals({});
-  }, [page, rows, fetchMinerals]);
+  const onCancelDel = () => {
+    setDelMineralId(null);
+    closeModal();
+  };
+
+  const onConfirmDeletion = () => {
+    if (!delMineralId) {
+      closeModal();
+      return;
+    }
+    deleteMineral(delMineralId, {
+      onSuccess: () => {
+        setDelMineralId(null);
+        toast.success("User deleted succesfully");
+        closeModal();
+      },
+      onError: (error) => toast.error(GetApiErrorMessage(error)),
+    });
+  };
+
+  const columnDefs = useMemo(
+    () => [
+      createTextColumn("names", "Name", { flex: 3.5 }),
+      createTextColumn("emails", "Email", { flex: 3.5 }),
+      createTextColumn("numbers", "Number", { flex: 3.5 }),
+      createTextColumn("state.name", "State", { flex: 3.5 }),
+      createSelectColumn("counties", "Counties", 3),
+      createTextColumn("addresses", "Address", { flex: 3 }),
+      createActionsColumn({
+        onView: (data: any) => navigate(`/mineral/${data?._id}`),
+        onEdit: (data: any) => navigate(`/edit-mineral/${data?._id}`),
+        onDelete: (data: any) => confirmDeletion(data?._id || ""),
+      }),
+    ],
+    []
+  );
 
   return (
     <>
-      <PageMeta title="Contact |" description="" />
       <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
         <h2
           className="text-xl font-semibold text-gray-800 dark:text-white/90"
@@ -95,7 +109,7 @@ export default function MineralList() {
             </IconButton>
           </li>
           <li>
-            <IconButton onClick={() => fetchMinerals({})} loading={loading}>
+            <IconButton onClick={refetch} loading={loading}>
               <ArrowPathIcon
                 height={18}
                 width={18}
@@ -106,259 +120,75 @@ export default function MineralList() {
         </ol>
       </div>
 
-      {showSearch && <SearchForm onSearch={fetchMinerals} loading={loading} />}
+      {showSearch && (
+        <SearchForm form={form} setForm={setForm} loading={loading} />
+      )}
 
-      <div className="rounded-2xl min-w-200 max-w-250 overflow-x-auto border border-gray-200 bg-white">
-        <DataTable
-          value={mineralsList}
-          paginator
-          rows={rows}
-          totalRecords={total}
-          first={(page - 1) * rows}
-          lazy
-          loading={loading}
-          onPage={(e) => {
-            setPage((e.page ?? 0) + 1); // default page = 0
-            setRows(e.rows ?? rows); // keep old rows if undefined
-          }}
-          rowsPerPageOptions={[10, 20, 40, 100]}
-          globalFilterFields={[
-            "names",
-            "emails",
-            "numbers",
-            "state",
-            "counties",
-            "addresses",
-            "",
-          ]}
-          emptyMessage="No results found!"
-          scrollable={true}
-          scrollHeight="65vh" // 👈 makes table body scrollable
-          paginatorDropdownAppendTo={"self"}
-        >
-          <Column
-            field="names"
-            filter={false}
-            headerClassName="!bg-transparent !py-3"
-            header={
-              <span className="text-gray-500 text-sm font-normal">Name</span>
-            }
-            body={(rowData) => (
-              <span className="text-gray-500 text-sm font-normal line-clamp-2">
-                {getValue(rowData?.names[0])}
-              </span>
-            )}
-            style={{ minWidth: "12rem" }}
-          />
-          <Column
-            field="emails"
-            filter={false}
-            headerClassName="!bg-transparent !py-3"
-            header={
-              <span className="text-gray-500 text-sm font-normal">Email</span>
-            }
-            body={(rowData) => (
-              <>
-                <span className="text-gray-500 text-sm font-normal">
-                  {getValue(rowData?.emails[0])}
-                </span>
-              </>
-            )}
-            style={{ minWidth: "12rem" }}
-          />
-          <Column
-            field="numbers"
-            filter={false}
-            header={
-              <span className="text-gray-500 text-sm font-normal">Number</span>
-            }
-            body={(rowData) => (
-              <span className="text-gray-500 text-sm font-normal">
-                {getValue(rowData?.numbers[0])}
-              </span>
-            )}
-            style={{ minWidth: "14rem" }}
-            headerClassName="!bg-transparent !py-3"
-          />
-          <Column
-            field="state"
-            filter={false}
-            header={
-              <span className="text-gray-500 text-sm font-normal">State</span>
-            }
-            body={(rowData) => (
-              <span className="text-gray-500 text-sm font-normal">
-                {rowData?.state?.name ?? "-"}
-              </span>
-            )}
-            style={{ minWidth: "12rem" }}
-            headerClassName="!bg-transparent !py-3"
-          />
-          <Column
-            field="counties"
-            header={
-              <span className="text-gray-500 text-sm font-normal">
-                Counties
-              </span>
-            }
-            body={(rowData) => (
-              <Dropdown
-                value={rowData?.counties?.length ? rowData?.counties[0] : ""}
-                options={rowData?.counties}
-                className="w-40 text-sm!"
-                pt={{
-                  input: { className: "text-sm py-1" },
-                }}
-              />
-              // <span className="text-gray-500 text-sm font-normal">
-              //   {rowData?.state?.name}
-              // </span>
-            )}
-            style={{ minWidth: "12rem" }}
-          />
-          <Column
-            field="addresses"
-            filter={false}
-            header={
-              <span className="text-gray-500 text-sm font-normal line-clamp-2!">
-                Address
-              </span>
-            }
-            body={(rowData) => (
-              <span className="text-gray-500 text-sm font-normal line-clamp-2">
-                {rowData?.addresses[0] ?? "-"}
-              </span>
-            )}
-            style={{ minWidth: "12rem" }}
-            headerClassName="!bg-transparent !py-3"
-          />
-          <Column
-            body={(rowData) => (
-              <div className="text-gray-500 text-sm font-normal flex flex-row items-center gap-2">
-                <Link to={`/mineral/${rowData?._id}`}>
-                  <EyeIcon className="h-4 w-4 cursor-pointer" />
-                </Link>
-                <Link to={`/edit-mineral/${rowData?._id}`}>
-                  <PencilSquareIcon className="h-4 w-4 cursor-pointer" />
-                </Link>
-                {/* <TrashBinIcon
-                  className="h-4 w-4 cursor-pointer"
-                  onClick={() => handleDelete(rowData?._id)}
-                /> */}
-                <DeleteConfirmation id={rowData?._id} />
-              </div>
-            )}
-            style={{ minWidth: "4rem" }}
-          />
-        </DataTable>
-        {/* </di/v> */}
-      </div>
+      <AgGridTable
+        rowData={data?.minerals || []}
+        columnDefs={columnDefs}
+        page={page}
+        total={data?.total}
+        loading={loading}
+        limit={10}
+        onPageChange={setPage}
+      />
+      <DeleteConfirmation
+        isOpen={isOpen}
+        onCancel={onCancelDel}
+        onConfirm={onConfirmDeletion}
+        loading={isDeleting}
+      />
     </>
   );
 }
 
-const DeleteConfirmation = memo(({ id }: any) => {
-  const dispatch = useDispatch();
-  const { isOpen, closeModal, openModal } = useModal();
-  const { request, loading } = useDeleteRequest(
-    `${endpoints.deleteMineral}?id=${id}`
-  );
-
-  const handleDelete = useCallback(() => {
-    if (!id) return;
-    const deletePromise = toast.promise(request({}), {
-      loading: "Deleting Mineral...",
-      success: "Mineral deleted successfully!",
-      error: "Failed to delete Mineral.",
-    });
-
-    deletePromise.then(() => {
-      dispatch(removeMineral(id));
-      closeModal();
-    });
-  }, [id]);
-
-  return (
-    <>
-      <TrashBinIcon className="h-4 w-4 cursor-pointer" onClick={openModal} />
-      <Modal onClose={closeModal} isOpen={isOpen} className="max-w-175">
-        <div className="no-scrollbar relative w-full max-w-175 overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
-          <div className="px-2 pr-14">
-            <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
-              Confirm deletion
-            </h4>
-            <p className="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">
-              Are you sure you want to delete this document?
-            </p>
-          </div>
-          <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={closeModal}
-            >
-              Close
-            </Button>
-            <Button
-              disabled={loading}
-              loading={loading}
-              type="submit"
-              size="sm"
-              onClick={handleDelete}
-            >
-              Confirm
-            </Button>
-          </div>
-        </div>
-      </Modal>
-    </>
-  );
-});
-
 const SearchForm = memo(
-  ({ onSearch, loading }: { onSearch: (e: any) => void; loading: boolean }) => {
-    const location = useSelector(getLocations);
-    const [form, setForm] = useState({
-      name: "",
-      state: { label: "", value: "" },
-      counties: [],
-    });
+  ({
+    form,
+    setForm,
+    loading,
+  }: {
+    form: any;
+    setForm: (val: any) => void;
+    loading: boolean;
+  }) => {
+    const location = useLocationStore((s) => s.locations);
 
     const handleOnChange = (e: ChangeEvent<HTMLInputElement>) => {
-      setForm((pre) => ({ ...pre, [e.target.name]: e.target.value }));
+      setForm((pre: any) => ({ ...pre, [e.target.name]: e.target.value }));
     };
 
-    const handleArrayChange = (e: { name: string; value: any }) => {
-      setForm((pre) => ({ ...pre, [e.name]: e.value }));
-    };
+    const filteredCounties = useMemo(
+      () =>
+        location?.filter(
+          (item: any) =>
+            item?.type === "county" && item?.state?.code === form.state.value
+        ) || [],
+      [form]
+    );
 
-    const onSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (loading) return;
-      onSearch({
-        name: form.name,
-        stateCode: form.state?.value || "",
-        counties: form.counties?.join(",") || "",
-      });
-    };
+    const handleCountyToggle = useCallback(
+      (countyName: string) => {
+        setForm((pre: any) => ({
+          ...pre,
+          county: pre.county === countyName ? "" : countyName,
+        }));
+      },
+      [form]
+    );
 
     const onClearSearch = () => {
       if (loading) return;
       setForm({
         name: "",
         state: { label: "", value: "" },
-        counties: [],
-      });
-      onSearch({
-        name: "",
-        stateCode: "",
-        counties: "",
+        county: "",
       });
     };
 
     return (
-      <form onSubmit={onSubmit} className="mb-8 flex flex-col gap-2">
+      <form className="mb-8 flex flex-col gap-2">
         <div className="grid grid-cols-2 gap-5">
           <SelectLocation
             name="state"
@@ -367,28 +197,29 @@ const SearchForm = memo(
             value={form.state}
             onChange={handleOnChange}
           />
-          <div className="">
+          {form.state?.value && <div className="">
             <Label htmlFor="counties">Counties</Label>
-            <MultiSelect
-              placeholder="Select Counties"
-              options={location?.filter(
-                (item) =>
-                  item?.type === "county" &&
-                  item?.state?.name === form.state.label
-              )}
-              optionLabel="name"
-              optionValue="name"
-              filter={true}
-              value={form.counties}
-              onChange={(e) =>
-                handleArrayChange({
-                  name: "counties",
-                  value: e.target.value,
-                })
-              }
-              className="w-full rounded-lg!"
-            />
-          </div>
+            <div className="flex flex-row items-center flex-wrap gap-2">
+              {filteredCounties.map((item: any) => {
+                const isSelected = form.county === item.name;
+                return (
+                  <span
+                    onClick={() => handleCountyToggle(item.name)}
+                    className={`cursor-pointer rounded-xl px-4 py-2 border transition-colors ${
+                      isSelected
+                        ? "bg-blue-500 text-white border-blue-500"
+                        : "text-gray-500 border-gray-300 hover:border-blue-500"
+                    }`}
+                    key={item?.code || item?.name}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    {item.name}
+                  </span>
+                );
+              })}
+            </div>
+          </div>}
         </div>
         <div className="grid grid-cols-2 gap-5">
           <div className="">
@@ -413,16 +244,8 @@ const SearchForm = memo(
           >
             Clear
           </Button>
-          <Button disabled={loading} type="submit" size="sm">
-            Search
-          </Button>
         </div>
       </form>
     );
   }
 );
-
-const getValue = (value: ""): string | any => {
-  if (value === null || value === undefined || value === "") return "-";
-  return value;
-};

@@ -1,61 +1,64 @@
-import { ChangeEvent, FormEvent, memo, useCallback, useEffect, useState, } from "react";
-import { ArrowPathIcon, MagnifyingGlassIcon, } from "@heroicons/react/24/outline";
-import { useDispatch, useSelector } from "react-redux";
-import { DataTable } from "primereact/datatable";
-import { Dropdown } from "primereact/dropdown";
-import { Column } from "primereact/column";
+import { ChangeEvent, FormEvent, memo, useCallback, useMemo, useState, } from "react";
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 
-import { Button, Tile, InputField as Input, Label, Select, PageMeta, IconButton, Modal, } from "../components/index";
-import { addLocation, deleteLocation, getLocations, setLocations, } from "../store/slices/locationsSlice";
+import { Button, Tile, InputField as Input, Label, Select, IconButton, Modal, AgGridTable, DeleteConfirmation, } from "../components/index";
+import { useAddLocation, useDeleteLocation, useFetchLocations } from "../hooks";
+import { createActionsColumn, createTextColumn } from "../libs";
 import GetApiErrorMessage from "../utils/GetApiErrorMessage";
-import { useDeleteRequest } from "../hooks/useDeleteRequest";
 import SelectLocation from "./MineralList/SelectLocation";
-import { getToken } from "../store/slices/authSlice";
-import { useMutation } from "../hooks/useMutation";
-import { useQuery } from "../hooks/useQuery";
 import { useModal } from "../hooks/useModal";
-import { endpoints } from "../config/api";
-import { TrashBinIcon } from "../icons";
 
 
 const Locations = () => {
-  const dispatch = useDispatch();
-  const token = useSelector(getToken);
-  const locations = useSelector(getLocations);
-  const { isOpen, openModal, closeModal } = useModal();
-  const { request, data, loading } = useQuery(
-    endpoints.getLocations,
-    token ?? "",
-    !locations?.length
-  );
-  const deleteLocApi = useDeleteRequest();
+  const [delLocId, setDelLocId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const { data, isPending: loading, refetch } = useFetchLocations(page, 20);
+  const deleteLocApi = useDeleteLocation();
+  const addLocModal = useModal();
+  const delLocModal = useModal();
 
-  const handleDeleteLocation = useCallback((id: string) => {
-    if (!id) return;
-    const deletePromise = toast.promise(
-      deleteLocApi.request({ path: `${endpoints.deleteLocation}?id=${id}` }),
-      {
-        loading: "Deleting location...",
-        success: "Location deleted successfully!",
-        error: "Failed to delete location.",
-      }
-    );
+  const confirmDeletion = (id: string) => {
+    setDelLocId(id);
+    delLocModal.openModal();
+  };
 
-    deletePromise.then(() => {
-      dispatch(deleteLocation(id));
-    });
-  }, []);
+  const onCancelDel = () => {
+    setDelLocId(null);
+    delLocModal.closeModal();
+  };
 
-  useEffect(() => {
-    if (data?.locations?.length) {
-      dispatch(setLocations(data?.locations));
+  const onConfirmDeletion = () => {
+    if (!delLocId) {
+      delLocModal.closeModal();
+      return;
     }
-  }, [data]);
+
+    deleteLocApi.mutate(delLocId, {
+      onSuccess: () => {
+        setDelLocId(null);
+        toast.success("Location deleted succesfully");
+        delLocModal.closeModal();
+      },
+      onError: (error) => toast.error(GetApiErrorMessage(error)),
+    });
+  };
+
+  const columnDefs = useMemo(
+    () => [
+      createTextColumn("name", "Name", { flex: 3.5 }),
+      createTextColumn("code", "Code", { flex: 3.5 }),
+      createTextColumn("type", "Type", { flex: 3.5 }),
+      createTextColumn("state.name", "State", { flex: 3.5 }),
+      createActionsColumn({
+        onDelete: (data: any) => confirmDeletion(data?._id),
+      }),
+    ],
+    []
+  );
 
   return (
     <>
-      <PageMeta title={"Locations | Petro411"} description="" />
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h2
           className="text-xl font-semibold text-gray-800 dark:text-white/90"
@@ -65,7 +68,7 @@ const Locations = () => {
         </h2>
         <ol className="flex items-center gap-4">
           <li>
-            <IconButton onClick={request} loading={loading}>
+            <IconButton onClick={refetch} loading={loading}>
               <ArrowPathIcon
                 height={18}
                 width={18}
@@ -74,96 +77,34 @@ const Locations = () => {
             </IconButton>
           </li>
           <li>
-            <Button size="sm" onClick={openModal}>
+            <Button size="sm" onClick={addLocModal.openModal}>
               Add new
             </Button>
           </li>
         </ol>
       </div>
       <Tile>
-        <AddNewLocation isOpen={isOpen} closeModal={closeModal} />
+        <AddNewLocation
+          isOpen={addLocModal.isOpen}
+          closeModal={addLocModal.closeModal}
+        />
 
-        <div className="w-full overflow-x-hidden">
-          <DataTable
-            value={locations}
-            paginator
-            rows={10}
-            dataKey="id"
-            loading={loading}
-            globalFilterFields={["name", "code", "type", "state", ""]}
-            emptyMessage="No locations found."
-            rowsPerPageOptions={[5, 10, 20, 30, 40, 50, 100]}
-          >
-            <Column
-              field="name"
-              sortable={true}
-              filter={true}
-              header={
-                <span className="text-gray-500 text-sm font-normal">Name</span>
-              }
-              body={(rowData) => (
-                <span className="text-gray-500 text-sm font-normal">
-                  {rowData?.name}
-                </span>
-              )}
-              style={{ minWidth: "12rem" }}
-            />
-            <Column
-              field="code"
-              sortable={true}
-              filter={true}
-              header={
-                <span className="text-gray-500 text-sm font-normal">Code</span>
-              }
-              body={(rowData) => (
-                <span className="text-gray-500 text-sm font-normal">
-                  {rowData?.code}
-                </span>
-              )}
-              style={{ minWidth: "12rem" }}
-            />
-            <Column
-              field="type"
-              sortable={true}
-              filter={true}
-              header={
-                <span className="text-gray-500 text-sm font-normal">Type</span>
-              }
-              body={(rowData) => (
-                <span className="text-gray-500 text-sm font-normal">
-                  {rowData?.type}
-                </span>
-              )}
-              style={{ minWidth: "12rem" }}
-            />
-            <Column
-              field="state"
-              sortable={true}
-              filter={true}
-              header={
-                <span className="text-gray-500 text-sm font-normal">State</span>
-              }
-              body={(rowData) => (
-                <span className="text-gray-500 text-sm font-normal">
-                  {rowData?.state?.name ?? "-"}
-                </span>
-              )}
-              style={{ minWidth: "12rem" }}
-            />
-            <Column
-              field=""
-              body={(rowData) => (
-                <span className="text-gray-500 text-sm font-normal">
-                  <TrashBinIcon
-                    className="h-4 w-4 cursor-pointer"
-                    onClick={() => handleDeleteLocation(rowData?._id)}
-                  />
-                </span>
-              )}
-              style={{ minWidth: "0.5rem" }}
-            />
-          </DataTable>
-        </div>
+        <AgGridTable
+          rowData={data?.locations || []}
+          columnDefs={columnDefs}
+          page={page}
+          total={data?.total}
+          loading={loading}
+          limit={20}
+          onPageChange={setPage}
+        />
+
+        <DeleteConfirmation
+          isOpen={delLocModal.isOpen}
+          onCancel={onCancelDel}
+          onConfirm={onConfirmDeletion}
+          loading={deleteLocApi.isPending}
+        />
       </Tile>
     </>
   );
@@ -179,12 +120,11 @@ const initialValues = {
   type: "",
   code: "",
   location: { label: "", value: "" },
+  taxYear: "",
 };
 
 const AddNewLocation = memo(({ isOpen, closeModal }: Props) => {
-  const dispatch = useDispatch();
-  const token = useSelector(getToken);
-  const addLocApi = useMutation(endpoints.addLocation);
+  const { mutate, isPending } = useAddLocation();
 
   const [form, setForm] = useState(initialValues);
 
@@ -196,28 +136,23 @@ const AddNewLocation = memo(({ isOpen, closeModal }: Props) => {
     [form]
   );
 
-  const handleSubmit = useCallback(
-    async (e: FormEvent) => {
-      try {
-        e.preventDefault();
-        const res = await addLocApi.request(
-          {
-            ...form,
-            state: { name: form.location.label, code: form.location.value },
-          },
-          null,
-          token ?? ""
-        );
-        dispatch(addLocation(res.location));
-        setForm(initialValues);
-        toast.success("New location has been added.");
-        closeModal();
-      } catch (error) {
-        toast.error(GetApiErrorMessage(error));
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    mutate(
+      {
+        ...form,
+        state: { name: form.location.label, code: form.location.value },
+      },
+      {
+        onSuccess: () => {
+          setForm(initialValues);
+          toast.success("New location has been added.");
+          closeModal();
+        },
+        onError: (error) => toast.error(GetApiErrorMessage(error)),
       }
-    },
-    [form]
-  );
+    );
+  };
 
   return (
     <>
@@ -281,6 +216,21 @@ const AddNewLocation = memo(({ isOpen, closeModal }: Props) => {
             />
           )}
 
+          {form.type === "county" && (
+            <div className="">
+              <Label htmlFor="taxYear">Tax Year</Label>
+              <Input
+                placeholder="Tax Year"
+                name="taxYear"
+                value={form.taxYear}
+                required={true}
+                onChange={onChange}
+                min={2}
+                type="text"
+              />
+            </div>
+          )}
+
           <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
             <Button
               type="button"
@@ -291,8 +241,8 @@ const AddNewLocation = memo(({ isOpen, closeModal }: Props) => {
               Close
             </Button>
             <Button
-              disabled={addLocApi.loading}
-              loading={addLocApi.loading}
+              disabled={isPending}
+              loading={isPending}
               type="submit"
               size="sm"
             >

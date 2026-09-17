@@ -1,22 +1,16 @@
-import { memo, useCallback, useEffect, useState } from "react";
-import { Button, InputField, Label, PageMeta } from "../../components";
-import ComponentCard from "../../components/common/ComponentCard";
+import { memo, useEffect, useState } from "react";
 import { useParams } from "react-router";
-import TextArea from "../../components/form/input/TextArea";
-import TodoInput from "../../components/ui/todoInput/TodoInput";
-import { useMutationPut } from "../../hooks/useMutationPut";
-import { endpoints } from "../../config/api";
-import { useMutation } from "../../hooks/useMutation";
-import { useDispatch, useSelector } from "react-redux";
 import toast from "react-hot-toast";
+
+import ComponentCard from "../../components/common/ComponentCard";
+import TodoInput from "../../components/ui/todoInput/TodoInput";
 import GetApiErrorMessage from "../../utils/GetApiErrorMessage";
-import {
-  addPlan,
-  getPlans,
-  setPlans,
-  updatePlan,
-} from "../../store/slices/planSlice";
-import { useQuery } from "../../hooks/useQuery";
+import { Button, InputField, Label } from "../../components";
+import TextArea from "../../components/form/input/TextArea";
+import { useAddPlan, useUpdatePlan } from "../../hooks";
+import { usePlansStore } from "../../store";
+
+
 let initialValues = {
   title: "",
   subtitle: "",
@@ -30,11 +24,9 @@ let initialValues = {
 const AddEditPlan = () => {
   const params = useParams();
   let planId = params?.id;
-  const plans = useSelector(getPlans);
-  const getPlanApi = useQuery(endpoints.getPlans, null, !plans.length);
-  const dispatch = useDispatch();
-  const updateApi = useMutationPut(endpoints.editPlan);
-  const createApi = useMutation(endpoints.createPlan);
+  const plans = usePlansStore((state) => state.plans);
+  const updateApi = useUpdatePlan();
+  const createApi = useAddPlan();
   const [formData, setFormData] = useState(initialValues);
 
   const handleChange = (
@@ -44,50 +36,45 @@ const AddEditPlan = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      try {
-        if (planId) {
-          let payload = {
-            ...formData,
-            planId,
-            amount: parseFloat(Number(formData.amount).toFixed(2)),
-            downloadLimit: parseInt(formData.downloadLimit) || 0,
-            download_limit: parseInt(formData.downloadLimit) || 0, // Try both camelCase and snake_case
-          };
-          console.log("Sending payload to backend:", payload);
-          let res = await updateApi.request(payload);
-          console.log("Backend response:", res);
-          dispatch(updatePlan(res?.data));
-          toast.success("Plan updated successfully.");
-        } else {
-          let payload = {
-            ...formData,
-            amount: parseFloat(Number(formData.amount).toFixed(2)),
-            downloadLimit: parseInt(formData.downloadLimit) || 0,
-            download_limit: parseInt(formData.downloadLimit) || 0, // Try both camelCase and snake_case
-          };
-          console.log("Sending payload to backend:", payload);
-          let res = await createApi.request(payload);
-          console.log("Backend response:", res);
-          dispatch(addPlan(res?.data));
-          toast.success("Plan created successfully.");
-          setFormData(initialValues);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (planId) {
+      updateApi.mutate(
+        {
+          ...formData,
+          planId,
+          amount: parseFloat(Number(formData.amount).toFixed(2)),
+          downloadLimit: parseInt(formData.downloadLimit) || 0,
+          download_limit: parseInt(formData.downloadLimit) || 0, // Try both camelCase and snake_case
+        },
+        {
+          onSuccess: () => {
+            toast.success("Plan updated successfully.");
+          },
+          onError: (error) => toast.error(GetApiErrorMessage(error)),
         }
-      } catch (error) {
-        toast.error(GetApiErrorMessage(error));
-      }
-    },
-    [formData, params]
-  );
+      );
+    } else {
+      createApi.mutate(
+        {
+          ...formData,
+          amount: parseFloat(Number(formData.amount).toFixed(2)),
+          downloadLimit: parseInt(formData.downloadLimit) || 0,
+          download_limit: parseInt(formData.downloadLimit) || 0, // Try both camelCase and snake_case
+        },
+        {
+          onSuccess: () => {
+            toast.success("Plan created successfully.");
+            setFormData(initialValues);
+          },
+          onError: (error) => toast.error(GetApiErrorMessage(error)),
+        }
+      );
+    }
+  };
 
   useEffect(() => {
-    if (!plans?.length) {
-      if (getPlanApi.data?.plans) {
-        dispatch(setPlans(getPlanApi.data?.plans));
-      }
-    } else {
+    if (plans?.length && planId) {
       const plan = plans.find((item) => item._id === planId);
       setFormData({
         title: plan?.title ?? "",
@@ -100,11 +87,10 @@ const AddEditPlan = () => {
         downloadLimit: plan?.downloadLimit ?? "",
       });
     }
-  }, [getPlanApi.data]);
+  }, [plans, planId]);
 
   return (
     <>
-      <PageMeta title="Stripe plan" description="" />
       <ComponentCard title={params?.id ? "Edit plan" : "Create plan"}>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -161,7 +147,6 @@ const AddEditPlan = () => {
                 placeholder="Enter Stripe Price amount"
               />
             </div>
-
 
             <div className="">
               <TodoInput
@@ -224,8 +209,8 @@ const AddEditPlan = () => {
               type="submit"
               variant="primary"
               size="sm"
-              loading={createApi.loading || updateApi.loading}
-              disabled={createApi.loading || updateApi.loading}
+              loading={createApi.isPending || updateApi.isPending}
+              disabled={createApi.isPending || updateApi.isPending}
             >
               {params?.id ? "Update Plan" : "Create Plan"}
             </Button>

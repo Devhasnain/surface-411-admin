@@ -1,14 +1,11 @@
 import { ChangeEvent, FormEvent, memo, useCallback, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
 import toast from "react-hot-toast";
 
 import { TodoInput, TextArea, InputField as Input, Button, Label, } from "../../components/index";
-import { getLocations } from "../../store/slices/locationsSlice";
-import { addMineral } from "../../store/slices/mineralsSlice";
-import { getToken } from "../../store/slices/authSlice";
-import { useMutation } from "../../hooks/useMutation";
+import GetApiErrorMessage from "../../utils/GetApiErrorMessage";
+import { useLocationStore } from "../../store";
 import SelectLocation from "./SelectLocation";
-import { endpoints } from "../../config/api";
+import { useAddMineral } from "../../hooks";
 
 
 let initialInputValues = {
@@ -32,12 +29,10 @@ let initialArrayValues: any = {
 };
 
 const AddMineralForm = () => {
-  const dispatch = useDispatch();
-  const token = useSelector(getToken);
-  const location = useSelector(getLocations);
+  const location = useLocationStore((state)=>state.locations);
   const [formInputs, setFormInputs] = useState(initialInputValues);
   const [formArray, setFormArray] = useState(initialArrayValues);
-  const { request, loading } = useMutation();
+  const { mutate, isPending: loading } = useAddMineral();
 
   const handleOnChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -57,28 +52,26 @@ const AddMineralForm = () => {
     setFormArray((pre: any) => ({ ...pre, [e.fieldName]: e.value }));
   };
 
-  const handleCountyToggle = useCallback(
-    (countyName: string) => {
-      setFormArray((pre: any) => ({
-        ...pre,
-        counties: pre.counties.includes(countyName)
-          ? pre.counties.filter((a: any) => a !== countyName)
-          : [...pre.counties, countyName],
-      }));
-    },
-    []
-  );
+  const handleCountyToggle = useCallback((countyName: string) => {
+    setFormArray((pre: any) => ({
+      ...pre,
+      counties: pre.counties.includes(countyName)
+        ? pre.counties.filter((a: any) => a !== countyName)
+        : [...pre.counties, countyName],
+    }));
+  }, []);
 
-  const filteredCounties = location?.filter(
-    (item: any) =>
-      item?.type === "county" &&
-      item?.state?.code === formInputs.state.value
-  ) || [];
+  const filteredCounties =
+    location?.filter(
+      (item: any) =>
+        item?.type === "county" && item?.state?.code === formInputs.state.value
+    ) || [];
 
-  const handleOnSubmit = useCallback(
-    (e: FormEvent) => {
-      e.preventDefault();
-      const payload = {
+  const handleOnSubmit = (e: FormEvent) => {
+    e.preventDefault();
+
+    mutate(
+      {
         ...formArray,
         name: formInputs.name,
         zipcode: formInputs.zipcode,
@@ -91,26 +84,17 @@ const AddMineralForm = () => {
           name: formInputs.ownerState.label,
           code: formInputs.ownerState.value,
         },
-      };
-
-      toast.promise(request(payload, endpoints.addMineral, token ?? ""), {
-        loading: "Submitting...",
-        success: (res) => {
-          dispatch(addMineral(res.data));
+      },
+      {
+        onSuccess: () => {
           setFormArray(initialArrayValues);
           setFormInputs(initialInputValues);
-          return "Submitted successfully!";
+          toast.success("Mineral added successfully.");
         },
-        error: (err) => {
-          console.error("Error:", err);
-          return "Submission failed!";
-        },
-      });
-    },
-    [formArray, formInputs]
-  );
-
-  console.log(formArray);
+        onError: (error) => toast.error(GetApiErrorMessage(error)),
+      }
+    );
+  };
 
   return (
     <form className="flex flex-col gap-4" onSubmit={handleOnSubmit}>
@@ -168,33 +152,35 @@ const AddMineralForm = () => {
             className="z-10"
             onChange={handleOnChange}
           />
-          {formInputs.state.value && <div className="">
-            <Label htmlFor="counties">Counties</Label>
-            <div className="flex flex-row items-center flex-wrap gap-2">
-              {filteredCounties.map((item: any) => {
-                const isSelected = formArray.counties.includes(item?.name);
-                return (
-                  <span
-                    onClick={() => handleCountyToggle(item?.name)}
-                    className={`cursor-pointer rounded-xl px-4 py-2 border transition-colors ${
-                      isSelected
-                        ? "bg-blue-500 text-white border-blue-500"
-                        : "text-gray-500 border-gray-300 hover:border-blue-500"
-                    }`}
-                    key={item?.code || item?.name}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ")
-                        handleCountyToggle(item?.name);
-                    }}
-                  >
-                    {item.name}
-                  </span>
-                );
-              })}
+          {formInputs.state.value && (
+            <div className="">
+              <Label htmlFor="counties">Counties</Label>
+              <div className="flex flex-row items-center flex-wrap gap-2">
+                {filteredCounties.map((item: any) => {
+                  const isSelected = formArray.counties.includes(item?.name);
+                  return (
+                    <span
+                      onClick={() => handleCountyToggle(item?.name)}
+                      className={`cursor-pointer rounded-xl px-4 py-2 border transition-colors ${
+                        isSelected
+                          ? "bg-blue-500 text-white border-blue-500"
+                          : "text-gray-500 border-gray-300 hover:border-blue-500"
+                      }`}
+                      key={item?.code || item?.name}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ")
+                          handleCountyToggle(item?.name);
+                      }}
+                    >
+                      {item.name}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
-          </div>}
+          )}
         </div>
       </div>
       <div>

@@ -1,74 +1,46 @@
-import { useDispatch, useSelector } from "react-redux";
-import PageMeta from "../../components/common/PageMeta";
-import Tile from "../../components/common/Tile";
-import Input from "../../components/form/input/InputField";
-import TextArea from "../../components/form/input/TextArea";
-import Label from "../../components/form/Label";
-import Accordion from "../../components/ui/accordion/Accordion";
-import Button from "../../components/ui/button/Button";
-import { Modal } from "../../components/ui/modal";
-import { useModal } from "../../hooks/useModal";
-import { PencilIcon } from "../../icons";
-import {
-  addFaq,
-  deleteFaq,
-  getFaqs,
-  setFaqs,
-  updateFaq,
-} from "../../store/slices/faqSlice";
-import { useQuery } from "../../hooks/useQuery";
-import baseApi, { endpoints } from "../../config/api";
 import { ChangeEvent, useCallback, useEffect, useState } from "react";
-import NoResults from "../../components/NoResults";
 import { ArrowPathIcon } from "@heroicons/react/24/solid";
 import { TrashIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+
+import { useAddFaq, useDeleteFaq, useFetchFaqs, useUpdateFaq, } from "../../hooks";
 import GetApiErrorMessage from "../../utils/GetApiErrorMessage";
-import { useMutation } from "../../hooks/useMutation";
-import { getToken } from "../../store/slices/authSlice";
+import Accordion from "../../components/ui/accordion/Accordion";
+import TextArea from "../../components/form/input/TextArea";
+import Input from "../../components/form/input/InputField";
+import Button from "../../components/ui/button/Button";
+import NoResults from "../../components/NoResults";
+import { Modal } from "../../components/ui/modal";
+import Tile from "../../components/common/Tile";
+import Label from "../../components/form/Label";
+import { useModal } from "../../hooks/useModal";
+import { PencilIcon } from "../../icons";
+
 
 const Faqs = () => {
   const { isOpen, closeModal, openModal } = useModal();
-  const token = useSelector(getToken);
-  const faqs = useSelector(getFaqs);
-  const dispatch = useDispatch();
   const [selectedFaq, setSelecedFaq] = useState<any | null>(null);
 
-  const { data, loading, error, request } = useQuery(
-    endpoints.getFaqs,
-    "",
-    !faqs?.length
-  );
+  const { data, isPending: loading, refetch } = useFetchFaqs();
+  const delFaqApi = useDeleteFaq();
 
   const handleSelectFaq = useCallback(
     (item: any) => {
       setSelecedFaq(item);
       openModal();
     },
-    [selectedFaq, faqs]
+    [selectedFaq, data?.faqs]
   );
 
-  const handleDeleteFaq = useCallback(async (id: string) => {
-    try {
-      await baseApi.delete(`${endpoints.deleteFaqs}?id=${id}`, {
-        headers: { Authorization: token ?? "" },
-      });
-      dispatch(deleteFaq(id));
-      toast.success("Faq has been deleted.");
-    } catch (error) {
-      toast.error(GetApiErrorMessage(error));
-    }
-  }, []);
-
-  useEffect(() => {
-    if (data) {
-      dispatch(setFaqs(data?.faqs ?? []));
-    }
-  }, [data, dispatch]);
+  const handleDeleteFaq = (id: string) => {
+    delFaqApi.mutate(id, {
+      onSuccess: () => toast.success("Faq has been deleted."),
+      onError: (error) => toast.error(GetApiErrorMessage(error)),
+    });
+  };
 
   return (
     <>
-      <PageMeta title="Faqs |" description="" />
 
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h2
@@ -80,13 +52,13 @@ const Faqs = () => {
         <ol className="flex items-center gap-4">
           <li>
             <button
-              onClick={request}
-              className="relative flex items-center justify-center !text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+              onClick={() => refetch()}
+              className="relative flex items-center justify-center text-gray-500! transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
             >
               <ArrowPathIcon
                 height={20}
                 width={20}
-                className={`!text-gray-500 transition-colors ${
+                className={`text-gray-500! transition-colors ${
                   loading && "animate-spin"
                 } ease-in-out`}
               />
@@ -100,11 +72,11 @@ const Faqs = () => {
         </ol>
       </div>
 
-      {faqs?.length ? (
+      {data?.faqs?.length ? (
         <Tile>
-          {faqs?.map((item, index) => (
+          {data?.faqs?.map((item: any, i: number) => (
             <Accordion
-              key={index}
+              key={i}
               title={item?.title}
               description={item?.description}
               btns={
@@ -156,9 +128,8 @@ const AddFaq = ({
   setSelectedFaq,
 }: AddFaqProps) => {
   const [form, setForm] = useState({ title: "", description: "" });
-  const token = useSelector(getToken);
-  const dispatch = useDispatch();
-  const { loading, request, clearData } = useMutation(endpoints.createFaqs);
+  const { mutate: addFaq, isPending: isAdding } = useAddFaq();
+  const { mutate: updateFaq, isPending: isUpdating } = useUpdateFaq();
 
   const handleOnChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
@@ -168,29 +139,23 @@ const AddFaq = ({
     [form]
   );
 
-  const handleOnSubmit = async (e: any) => {
-    try {
-      e.preventDefault();
-      const data = await request(
-        form,
-        selectedFaq?._id
-          ? `${endpoints?.updateFaqs}?id=${selectedFaq?._id}`
-          : null,
-        token ?? ""
+  const handleOnSubmit = (e: any) => {
+    e.preventDefault();
+    if (selectedFaq?._id) {
+      updateFaq(
+        { ...form, id: selectedFaq?._id },
+        {
+          onSuccess: () => toast.success("Faq has been updated."),
+          onError: (error) => toast.error(GetApiErrorMessage(error)),
+        }
       );
-      dispatch(
-        selectedFaq
-          ? updateFaq({ ...form, _id: selectedFaq?._id })
-          : addFaq(data?.faq)
-      );
-      toast.success(
-        selectedFaq ? "Faq has been updated." : "New Faq has been created."
-      );
-      handleOnClose();
-      clearData();
-    } catch (error) {
-      toast.error(GetApiErrorMessage(error));
+    } else {
+      addFaq(form, {
+        onSuccess: () => toast.success("Faq has been added."),
+        onError: (error) => toast.error(GetApiErrorMessage(error)),
+      });
     }
+    handleOnClose();
   };
 
   const handleOnClose = () => {
@@ -209,8 +174,8 @@ const AddFaq = ({
   }, [selectedFaq]);
 
   return (
-    <Modal className="max-w-[700px]" isOpen={isOpen} onClose={handleOnClose}>
-      <div className="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
+    <Modal className="max-w-175" isOpen={isOpen} onClose={handleOnClose}>
+      <div className="no-scrollbar relative w-full max-w-175 overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
         <div className="">
           <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
             Add Faq
@@ -253,8 +218,8 @@ const AddFaq = ({
               Close
             </Button>
             <Button
-              disabled={loading}
-              loading={loading}
+              disabled={isAdding || isUpdating}
+              loading={isAdding || isUpdating}
               type="submit"
               size="sm"
             >

@@ -1,50 +1,57 @@
-import { Divider } from "primereact/divider";
-import { IconButton, PageMeta } from "../../components";
-import { PencilIcon, TrashBinIcon } from "../../icons";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
-import { Link } from "react-router";
-import { useCallback, useEffect } from "react";
-import { useQuery } from "../../hooks/useQuery";
-import { endpoints } from "../../config/api";
-import { useDispatch, useSelector } from "react-redux";
-import { deletePlan, getPlans, setPlans } from "../../store/slices/planSlice";
+import { Divider } from "primereact/divider";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { useDeleteRequest } from "../../hooks/useDeleteRequest";
+import { Link } from "react-router";
+
+import { DeleteConfirmation, IconButton } from "../../components";
+import GetApiErrorMessage from "../../utils/GetApiErrorMessage";
+import { useDeletePlan, useFetchPlans } from "../../hooks";
+import { PencilIcon, TrashBinIcon } from "../../icons";
+import { useModal } from "../../hooks/useModal";
+import { usePlansStore } from "../../store";
+
 
 const Plans = () => {
-    const deleteApi = useDeleteRequest();
-  const plans = useSelector(getPlans);
-  const dispatch = useDispatch();
-  const { request, data, loading } = useQuery(
-    endpoints.getPlans,
-    null,
-    !plans.length
-  );
-  const handleDeletePlan = useCallback((id: string) => {
-    const promise = toast.promise(
-        deleteApi.request({
-            path:`${endpoints.deletePlan}?id=${id}`,
-        }),
-        {
-            loading:"Deleting plan...",
-            success:"Plan deleted successfully",
-            error:"Something went wrong"
-        }
-    );
-    promise.then(()=>{
-        dispatch(deletePlan(id))
-    })
-  }, []);
+  const storePlans = usePlansStore((state) => state.setPlans);
+  const [delPlanId, setDelPlanId] = useState<string | null>(null);
+  const { isOpen, toggleModal } = useModal();
+  const { data, isPending, refetch } = useFetchPlans();
+  const { mutate: deletePlan, isPending: isDeleting } = useDeletePlan();
+
+  const confirmDeletion = (id: string) => {
+    setDelPlanId(id);
+    toggleModal();
+  };
+
+  const onCancelDel = () => {
+    setDelPlanId(null);
+    toggleModal();
+  };
+
+  const onConfirmDeletion = () => {
+    if (!delPlanId) {
+      toggleModal();
+      return;
+    }
+    deletePlan(delPlanId, {
+      onSuccess: () => {
+        setDelPlanId(null);
+        toast.success("User deleted succesfully");
+        toggleModal();
+      },
+      onError: (error) => toast.error(GetApiErrorMessage(error)),
+    });
+  };
 
   useEffect(() => {
-    if (data) {
-      dispatch(setPlans(data?.plans));
+    if (data?.plans?.length) {
+      storePlans(data?.plans);
     }
-  }, [data]);
+  }, [data?.plans]);
 
   return (
     <>
-      <PageMeta title="Plans |" description="" />
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h2
           className="text-xl font-semibold text-gray-800 dark:text-white/90"
@@ -54,7 +61,7 @@ const Plans = () => {
         </h2>
         <ol className="flex items-center gap-4">
           <li>
-            <IconButton onClick={request} loading={loading}>
+            <IconButton onClick={refetch} loading={isPending}>
               <ArrowPathIcon
                 height={18}
                 width={18}
@@ -73,23 +80,25 @@ const Plans = () => {
         </ol>
       </div>
       <div className="grid grid-cols-3 w-full gap-8">
-        {plans?.length
-          ? plans?.map((item, index) => (
+        {data?.plans?.length
+          ? data?.plans?.map((item: any, i: number) => (
               <div
-                key={index}
+                key={i}
                 className="border rounded-xl shadow hover:shadow-md bg-white dark:bg-gray-dark dark:border-gray-dark p-5 dark:text-white group relative"
               >
-                <div className="flex flex-row items-center gap-1 justify-end opacity-0 group-hover:opacity-100 !z-0 group-hover:!z-1 absolute top-3 right-3">
-                  <TrashBinIcon
-                    className="cursor-pointer"
-                    onClick={() => handleDeletePlan(item?._id)}
-                    height={20}
-                    width={20}
-                  />
-                  <Link to={`/plans/${item?._id}`}>
-                    <PencilIcon height={22} width={22} />
-                  </Link>
-                </div>
+                {!isDeleting && (
+                  <div className="flex flex-row items-center gap-1 justify-end opacity-0 group-hover:opacity-100 z-0! group-hover:z-1! absolute top-3 right-3">
+                    <TrashBinIcon
+                      className="cursor-pointer"
+                      onClick={() => confirmDeletion(item?._id)}
+                      height={20}
+                      width={20}
+                    />
+                    <Link to={`/plans/${item?._id}`}>
+                      <PencilIcon height={22} width={22} />
+                    </Link>
+                  </div>
+                )}
                 <div className="flex flex-col gap-2">
                   <h1 className="font-medium text-lg">{item?.title}</h1>
                   <h2 className="font-medium text-3xl">${item?.amount}</h2>
@@ -119,6 +128,12 @@ const Plans = () => {
             ))
           : ""}
       </div>
+      <DeleteConfirmation
+        isOpen={isOpen}
+        onCancel={onCancelDel}
+        onConfirm={onConfirmDeletion}
+        loading={isDeleting}
+      />
     </>
   );
 };
